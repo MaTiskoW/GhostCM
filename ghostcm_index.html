@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhostCM</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+  body{margin:0;font-family:sans-serif;background:#0f1724;color:white;display:flex;height:100vh;overflow:hidden;}
+  #sidebar{width:250px;background:#1e293b;display:flex;flex-direction:column;}
+  #servers{height:60px;display:flex;align-items:center;justify-content:center;background:#111827;font-weight:bold;}
+  #channels,#friends{flex:1;overflow:auto;padding:10px;}
+  .channel,.friend{padding:5px;cursor:pointer;border-radius:3px;margin-bottom:2px;}
+  .channel:hover,.friend:hover{background:#2563eb;}
+  #main{flex:1;display:flex;flex-direction:column;}
+  #chat{flex:1;overflow:auto;padding:10px;}
+  #input{display:flex;padding:10px;background:#1e293b;}
+  #input input{flex:1;padding:5px;border:none;border-radius:5px;margin-right:5px;}
+  #input button{padding:5px 10px;border:none;border-radius:5px;background:#2563eb;color:white;cursor:pointer;}
+  .message{margin-bottom:10px;}
+  .message .nick{font-weight:bold;color:#cbd9ee;}
+  #profile{padding:10px;background:#111827;border-bottom:1px solid #2563eb;}
+  #profile input{width:100%;margin-top:5px;padding:5px;border-radius:5px;border:none;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="servers">GhostCM</div>
+  <div id="channels"></div>
+  <div id="friends"></div>
+</div>
+
+<div id="main">
+  <div id="profile">
+    <div>Nick: <span id="nickDisplay"></span></div>
+    <input id="nickInput" placeholder="Zmień nick">
+    <input id="avatarInput" placeholder="URL avatara">
+    <button onclick="updateProfile()">Zapisz profil</button>
+  </div>
+  <div id="chat"></div>
+  <div id="input">
+    <input type="text" id="msgInput" placeholder="Napisz wiadomość..."/>
+    <button onclick="sendMessage()">Wyślij</button>
+  </div>
+</div>
+
+<script>
+  // 🔹 Firebase config
+  const firebaseConfig = {
+    apiKey: "TU_WKLEJ_APIKEY",
+    authDomain: "TU_WKLEJ_AUTHDOMAIN",
+    databaseURL: "TU_WKLEJ_DATABASEURL",
+    projectId: "TU_WKLEJ_PROJECTID",
+    storageBucket: "TU_WKLEJ_STORAGEBUCKET",
+    messagingSenderId: "TU_WKLEJ_MESSAGINGSENDERID",
+    appId: "TU_WKLEJ_APPID"
+  };
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // 🔹 Użytkownik
+  let userId = 'u'+Math.floor(Math.random()*10000);
+  let userNick = "Anon" + Math.floor(Math.random()*1000);
+  let userAvatar = "";
+
+  document.getElementById("nickDisplay").textContent = userNick;
+
+  // 🔹 Kanały
+  const channelsEl = document.getElementById("channels");
+  const chatEl = document.getElementById("chat");
+  let currentChannel = "ogólny";
+
+  function renderChannels(list){
+    channelsEl.innerHTML="";
+    list.forEach(ch=>{
+      const div = document.createElement("div");
+      div.textContent = ch;
+      div.className="channel";
+      div.onclick=()=>selectChannel(ch);
+      channelsEl.appendChild(div);
+    });
+  }
+
+  function selectChannel(ch){
+    currentChannel=ch;
+    chatEl.innerHTML="";
+    listenMessages();
+  }
+
+  // 🔹 Pobieranie listy kanałów
+  db.ref("channels").on("value", snap=>{
+    const data = snap.val() || {};
+    renderChannels(Object.keys(data));
+    if(!data[currentChannel]) db.ref("channels/"+currentChannel).set(true);
+  });
+
+  // 🔹 Wiadomości
+  function listenMessages(){
+    db.ref("messages/"+currentChannel).off();
+    db.ref("messages/"+currentChannel).on("child_added", snap=>{
+      const msg = snap.val();
+      const div = document.createElement("div");
+      div.className="message";
+      div.innerHTML=`<span class="nick">${msg.nick}:</span> <span class="text">${msg.text}</span>`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    });
+  }
+  listenMessages();
+
+  function sendMessage(){
+    const text = document.getElementById("msgInput").value.trim();
+    if(!text) return;
+    db.ref("messages/"+currentChannel).push({nick:userNick,text,uid:userId});
+    document.getElementById("msgInput").value="";
+  }
+
+  document.getElementById("msgInput").addEventListener("keydown", e=>{
+    if(e.key==="Enter") sendMessage();
+  });
+
+  // 🔹 Domyślne kanały
+  ["ogólny","texture-pack","mody","optymalizacje"].forEach(ch=>{
+    db.ref("channels/"+ch).set(true);
+  });
+
+  // 🔹 Profil
+  function updateProfile(){
+    const nick = document.getElementById("nickInput").value.trim();
+    const avatar = document.getElementById("avatarInput").value.trim();
+    if(nick) userNick = nick;
+    if(avatar) userAvatar = avatar;
+    document.getElementById("nickDisplay").textContent = userNick;
+  }
+
+  // 🔹 Znajomi / blokowanie (demo)
+  const friendsEl = document.getElementById("friends");
+  function renderFriends(list){
+    friendsEl.innerHTML="<b>Znajomi / Blokady</b><br>";
+    list.forEach(f=>{
+      const div = document.createElement("div");
+      div.textContent = f.nick;
+      div.className="friend";
+      friendsEl.appendChild(div);
+    });
+  }
+
+  db.ref("users").on("value", snap=>{
+    const data = snap.val() || {};
+    const users = Object.values(data).filter(u=>u.uid!==userId);
+    renderFriends(users);
+  });
+
+  // Zapis użytkownika w bazie
+  db.ref("users/"+userId).set({uid:userId,nick:userNick,avatar:userAvatar});
+  setInterval(()=>{db.ref("users/"+userId).update({nick:userNick,avatar:userAvatar});},5000);
+
+</script>
+</body>
+</html>
