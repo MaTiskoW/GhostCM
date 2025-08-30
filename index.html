@@ -1,237 +1,162 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Modpack — Texture / Mody / Optymalizacje / Czat</title>
-  <style>
-    :root{
-      --bg:#0f1724; --card:#0b1220; --accent:#7c3aed; --muted:#93c5fd33; --glass: rgba(255,255,255,0.04);
-      --radius:14px; --gap:18px; --text:#e6edf3;
-      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#071026 0%, #071429 100%); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px}
-    .container{width:100%;max-width:1100px}
-    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
-    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#0ea5a4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
-    h1{font-size:20px;margin:0}
-    p.lead{margin:0;color:#a8b3c3;font-size:13px}
-
-    .grid{display:grid;grid-template-columns:1fr 360px;gap:var(--gap)}
-
-    /* left area: the square tab panel */
-    .panel{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-    .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-    .tile{aspect-ratio:1/1;background:linear-gradient(180deg,var(--glass),rgba(255,255,255,0.02));border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:14px;cursor:pointer;transition:transform .18s ease, box-shadow .18s ease;border:1px solid rgba(255,255,255,0.03)}
-    .tile:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(7,12,20,0.6)}
-    .tile.active{outline:2px solid var(--accent);box-shadow:0 20px 50px rgba(124,58,237,0.14)}
-    .tile .title{font-weight:700;font-size:16px}
-    .tile .meta{font-size:12px;color:#9fb0c9;margin-top:6px}
-
-    .actions{display:flex;gap:10px;margin-top:12px}
-    .btn{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600}
-    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
-
-    /* right column: preview / chat */
-    .side{display:flex;flex-direction:column;gap:12px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:12px}
-    .preview{min-height:220px;border-radius:10px;padding:12px;border:1px dashed rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:8px}
-    .preview h3{margin:0}
-    .file-meta{font-size:13px;color:#9fb0c9}
-
-    /* chat */
-    .chat{display:flex;flex-direction:column;height:320px}
-    .messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-    .msg{max-width:78%;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.03)}
-    .msg.me{align-self:flex-end;background:linear-gradient(90deg,var(--accent),#0ea5a4);color:white}
-    .composer{display:flex;gap:8px;padding:8px;border-top:1px solid rgba(255,255,255,0.02)}
-    .composer input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)}
-
-    footer{margin-top:14px;color:#93a6bd;font-size:12px;text-align:center}
-
-    /* responsive */
-    @media (max-width:920px){.grid{grid-template-columns:1fr;}.side{order:2}.panel{order:1;margin-bottom:12px}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhostCM</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+  body{margin:0;font-family:sans-serif;background:#0f1724;color:white;display:flex;height:100vh;overflow:hidden;}
+  #sidebar{width:250px;background:#1e293b;display:flex;flex-direction:column;}
+  #servers{height:60px;display:flex;align-items:center;justify-content:center;background:#111827;font-weight:bold;}
+  #channels,#friends{flex:1;overflow:auto;padding:10px;}
+  .channel,.friend{padding:5px;cursor:pointer;border-radius:3px;margin-bottom:2px;}
+  .channel:hover,.friend:hover{background:#2563eb;}
+  #main{flex:1;display:flex;flex-direction:column;}
+  #chat{flex:1;overflow:auto;padding:10px;}
+  #input{display:flex;padding:10px;background:#1e293b;}
+  #input input{flex:1;padding:5px;border:none;border-radius:5px;margin-right:5px;}
+  #input button{padding:5px 10px;border:none;border-radius:5px;background:#2563eb;color:white;cursor:pointer;}
+  .message{margin-bottom:10px;}
+  .message .nick{font-weight:bold;color:#cbd9ee;}
+  #profile{padding:10px;background:#111827;border-bottom:1px solid #2563eb;}
+  #profile input{width:100%;margin-top:5px;padding:5px;border-radius:5px;border:none;}
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="logo">MP</div>
-      <div>
-        <h1>Modpack — Pakiety, Mody, Optymalizacje, Czat</h1>
-        <p class="lead">Pobierz paczkę i zarządzaj zawartością przez prosty interfejs</p>
-      </div>
-    </header>
 
-    <div class="grid">
-      <section class="panel">
-        <div class="tiles" role="tablist" aria-label="Główne zakładki">
-          <div class="tile active" data-tab="texture" role="tab" tabindex="0">
-            <div class="title">Texture Pack</div>
-            <div class="meta">Wysokiej jakości tekstury</div>
-          </div>
-          <div class="tile" data-tab="mods" role="tab" tabindex="0">
-            <div class="title">Mody</div>
-            <div class="meta">Lista modów i instalator</div>
-          </div>
-          <div class="tile" data-tab="opt" role="tab" tabindex="0">
-            <div class="title">Optymalizacje</div>
-            <div class="meta">Skrypty i konfiguracje</div>
-          </div>
-          <div class="tile" data-tab="chat" role="tab" tabindex="0">
-            <div class="title">Czat</div>
-            <div class="meta">Szybki lokalny czat</div>
-          </div>
-        </div>
+<div id="sidebar">
+  <div id="servers">GhostCM</div>
+  <div id="channels"></div>
+  <div id="friends"></div>
+</div>
 
-        <div class="actions">
-          <button class="btn" id="downloadBtn">Pobierz paczkę</button>
-          <button class="btn ghost" id="uploadBtn">Dodaj plik</button>
-          <input id="fileInput" type="file" style="display:none" />
-        </div>
-
-        <div style="margin-top:12px;color:#9fb0c9;font-size:13px">Kliknij kwadrat, aby przełączyć widok. Pobieranie tworzy przykładowy plik ZIP (plik demo generowany lokalnie).</div>
-      </section>
-
-      <aside class="side">
-        <div class="card preview" id="preview">
-          <h3>Podgląd</h3>
-          <div id="previewContent">Wybierz zakładkę, aby zobaczyć więcej informacji.</div>
-          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:8px">
-            <div class="file-meta" id="previewMeta">Brak pliku</div>
-            <div style="font-size:12px;color:#9fb0c9">Local demo</div>
-          </div>
-        </div>
-
-        <div class="card chat" aria-live="polite">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <strong>Czat lokalny</strong>
-            <small id="chatStatus">Offline</small>
-          </div>
-          <div class="messages" id="messages" role="log"></div>
-          <div class="composer">
-            <input id="msgInput" placeholder="Napisz wiadomość..." maxlength="280" />
-            <button class="btn" id="sendBtn">Wyślij</button>
-          </div>
-        </div>
-
-      </aside>
-    </div>
-
-    <footer>Made with ❤️ — Edytuj ten plik, aby podłączyć backend lub hostować na serwerze.</footer>
+<div id="main">
+  <div id="profile">
+    <div>Nick: <span id="nickDisplay"></span></div>
+    <input id="nickInput" placeholder="Zmień nick">
+    <input id="avatarInput" placeholder="URL avatara">
+    <button onclick="updateProfile()">Zapisz profil</button>
   </div>
+  <div id="chat"></div>
+  <div id="input">
+    <input type="text" id="msgInput" placeholder="Napisz wiadomość..."/>
+    <button onclick="sendMessage()">Wyślij</button>
+  </div>
+</div>
 
-  <script>
-    // --- UI logic ---
-    const tiles = document.querySelectorAll('.tile');
-    const previewContent = document.getElementById('previewContent');
-    const previewMeta = document.getElementById('previewMeta');
-    const chatStatus = document.getElementById('chatStatus');
+<script>
+  // 🔹 Firebase config
+  const firebaseConfig = {
+    apiKey: "TU_WKLEJ_APIKEY",
+    authDomain: "TU_WKLEJ_AUTHDOMAIN",
+    databaseURL: "TU_WKLEJ_DATABASEURL",
+    projectId: "TU_WKLEJ_PROJECTID",
+    storageBucket: "TU_WKLEJ_STORAGEBUCKET",
+    messagingSenderId: "TU_WKLEJ_MESSAGINGSENDERID",
+    appId: "TU_WKLEJ_APPID"
+  };
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    const sample = {
-      texture: {
-        title: 'Texture Pack — HD 64x',
-        desc: 'Zestaw tekstur 64x, kompatybilny z shaderami. Rozmiar: ~45MB.',
-        files: ['textures.zip', 'readme.txt']
-      },
-      mods: {
-        title: 'Mody — Lista',
-        desc: 'Zainstaluj mody jednym kliknięciem. Zawiera instalator i instrukcję.',
-        files: ['mods/install.exe', 'mods/list.json']
-      },
-      opt: {
-        title: 'Optymalizacje',
-        desc: 'Skrypty optymalizujące ustawienia gry oraz konfigi JVM.',
-        files: ['optimize.sh', 'tweaks.cfg']
-      },
-      chat: {
-        title: 'Czat lokalny',
-        desc: 'Czat działa lokalnie w przeglądarce (wiadomości przechowywane tylko lokalnie).',
-        files: []
-      }
-    };
+  // 🔹 Użytkownik
+  let userId = 'u'+Math.floor(Math.random()*10000);
+  let userNick = "Anon" + Math.floor(Math.random()*1000);
+  let userAvatar = "";
 
-    function setActive(tab){
-      tiles.forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
-      const data = sample[tab];
-      previewContent.innerHTML = `<strong>${data.title}</strong><p style="margin:8px 0;color:#9fb0c9">${data.desc}</p>` +
-        (data.files.length? '<div style="font-size:13px;color:#9fb0c9">Pliki:<ul style="margin:6px 0 0 18px">'+data.files.map(f=>`<li>${f}</li>`).join('')+'</ul></div>':'');
-      previewMeta.textContent = data.files.length ? data.files.join(', ') : 'Brak plików do podglądu';
+  document.getElementById("nickDisplay").textContent = userNick;
 
-      // chat tab toggle
-      if(tab==='chat') chatStatus.textContent = 'Gotowy (lokalny)'; else chatStatus.textContent = 'Offline';
-    }
+  // 🔹 Kanały
+  const channelsEl = document.getElementById("channels");
+  const chatEl = document.getElementById("chat");
+  let currentChannel = "ogólny";
 
-    tiles.forEach(t=>{
-      t.addEventListener('click', ()=>setActive(t.dataset.tab));
-      t.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); t.click(); } });
+  function renderChannels(list){
+    channelsEl.innerHTML="";
+    list.forEach(ch=>{
+      const div = document.createElement("div");
+      div.textContent = ch;
+      div.className="channel";
+      div.onclick=()=>selectChannel(ch);
+      channelsEl.appendChild(div);
     });
+  }
 
-    // init
-    setActive('texture');
+  function selectChannel(ch){
+    currentChannel=ch;
+    chatEl.innerHTML="";
+    listenMessages();
+  }
 
-    // --- Download demo pack: creates a small zip-ish blob locally ---
-    document.getElementById('downloadBtn').addEventListener('click', ()=>{
-      const blobContent = [];
-      blobContent.push('Demo modpack generated: ' + new Date().toISOString() + '\n');
-      blobContent.push('Includes:\n- textures.zip\n- mods.zip\n- optimize.cfg\n');
-      const blob = new Blob(blobContent, {type:'application/octet-stream'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'modpack-demo.zip';
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+  // 🔹 Pobieranie listy kanałów
+  db.ref("channels").on("value", snap=>{
+    const data = snap.val() || {};
+    renderChannels(Object.keys(data));
+    if(!data[currentChannel]) db.ref("channels/"+currentChannel).set(true);
+  });
+
+  // 🔹 Wiadomości
+  function listenMessages(){
+    db.ref("messages/"+currentChannel).off();
+    db.ref("messages/"+currentChannel).on("child_added", snap=>{
+      const msg = snap.val();
+      const div = document.createElement("div");
+      div.className="message";
+      div.innerHTML=`<span class="nick">${msg.nick}:</span> <span class="text">${msg.text}</span>`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
     });
+  }
+  listenMessages();
 
-    // upload handler (client-side only)
-    const fileInput = document.getElementById('fileInput');
-    document.getElementById('uploadBtn').addEventListener('click', ()=>fileInput.click());
-    fileInput.addEventListener('change', e=>{
-      const f = e.target.files[0];
-      if(!f) return;
-      previewMeta.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
-      previewContent.innerHTML = `<strong>Wybrano plik:</strong><div style="margin-top:8px;color:#9fb0c9">${f.name}</div>`;
+  function sendMessage(){
+    const text = document.getElementById("msgInput").value.trim();
+    if(!text) return;
+    db.ref("messages/"+currentChannel).push({nick:userNick,text,uid:userId});
+    document.getElementById("msgInput").value="";
+  }
+
+  document.getElementById("msgInput").addEventListener("keydown", e=>{
+    if(e.key==="Enter") sendMessage();
+  });
+
+  // 🔹 Domyślne kanały
+  ["ogólny","texture-pack","mody","optymalizacje"].forEach(ch=>{
+    db.ref("channels/"+ch).set(true);
+  });
+
+  // 🔹 Profil
+  function updateProfile(){
+    const nick = document.getElementById("nickInput").value.trim();
+    const avatar = document.getElementById("avatarInput").value.trim();
+    if(nick) userNick = nick;
+    if(avatar) userAvatar = avatar;
+    document.getElementById("nickDisplay").textContent = userNick;
+  }
+
+  // 🔹 Znajomi / blokowanie (demo)
+  const friendsEl = document.getElementById("friends");
+  function renderFriends(list){
+    friendsEl.innerHTML="<b>Znajomi / Blokady</b><br>";
+    list.forEach(f=>{
+      const div = document.createElement("div");
+      div.textContent = f.nick;
+      div.className="friend";
+      friendsEl.appendChild(div);
     });
+  }
 
-    // --- Simple local chat (messages saved to localStorage) ---
-    const messagesEl = document.getElementById('messages');
-    const msgInput = document.getElementById('msgInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const STORAGE_KEY = 'local_modpack_chat_v1';
+  db.ref("users").on("value", snap=>{
+    const data = snap.val() || {};
+    const users = Object.values(data).filter(u=>u.uid!==userId);
+    renderFriends(users);
+  });
 
-    function renderMessages(){
-      messagesEl.innerHTML = '';
-      const msgs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      msgs.forEach(m=>{
-        const el = document.createElement('div'); el.className='msg';
-        if(m.me) el.classList.add('me');
-        el.innerHTML = `<div style="font-size:12px;color:#cbd9ee">${m.nick || 'Użytkownik'}</div><div style="margin-top:6px">${escapeHTML(m.text)}</div><div style="font-size:11px;color:#89a7c3;margin-top:6px">${new Date(m.t).toLocaleString()}</div>`;
-        messagesEl.appendChild(el);
-      });
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
+  // Zapis użytkownika w bazie
+  db.ref("users/"+userId).set({uid:userId,nick:userNick,avatar:userAvatar});
+  setInterval(()=>{db.ref("users/"+userId).update({nick:userNick,avatar:userAvatar});},5000);
 
-    function saveMessage(text){
-      const nick = 'Ty';
-      const msgs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      msgs.push({nick, text, t:Date.now(), me:true});
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-      renderMessages();
-    }
-
-    sendBtn.addEventListener('click', ()=>{
-      const v = msgInput.value.trim(); if(!v) return; saveMessage(v); msgInput.value=''; msgInput.focus();
-    });
-    msgInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); } });
-
-    function escapeHTML(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    // load
-    renderMessages();
-
-    // Accessibility: focus first tile
-    tiles[0].focus();
-  </script>
+</script>
 </body>
 </html>
